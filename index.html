@@ -10,87 +10,291 @@
         .hidden { display: none !important; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-100 min-h-screen pb-12">
 
-    <!-- 驗證彈窗容器 -->
-    <div id="birthdayModal" class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md text-center">
-        <div class="text-4xl mb-2">🔒</div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-1">身分驗證</h2>
-        <p id="studentInfoDisplay" class="text-green-800 font-bold mb-4">101班 02號 黃子杰</p>
+    <!-- 頂部標題列 -->
+    <header class="bg-emerald-800 text-white py-6 shadow-md mb-8">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <h1 class="text-3xl font-bold tracking-wide">學生社團選填系統</h1>
+            <p id="systemTimeInfo" class="text-emerald-100 text-sm mt-2">系統載入中...</p>
+        </div>
+    </header>
 
-        <p class="text-sm text-gray-500 mb-4">請輸入學生密碼以進行驗證：</p>
+    <main class="max-w-4xl mx-auto px-4">
+        
+        <!-- 步驟 1：選擇班級與學生 -->
+        <section id="stepSelectStudent" class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
+                <span class="bg-emerald-800 text-white rounded-full w-7 h-7 inline-flex items-center justify-center text-sm mr-2">1</span>
+                選擇學生身分
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">選擇班級</label>
+                    <select id="selectClass" onchange="onClassChange()" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:border-emerald-600">
+                        <option value="">-- 請選擇班級 --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">選擇學生</label>
+                    <select id="selectStudent" onchange="onStudentChange()" disabled class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:border-emerald-600 bg-gray-50">
+                        <option value="">-- 請先選擇班級 --</option>
+                    </select>
+                </div>
+            </div>
+        </section>
 
-        <!-- 密碼輸入框 -->
-        <input 
-            type="password" 
-            id="inputBirthday" 
-            placeholder="請輸入密碼" 
-            class="w-full text-center border-2 border-gray-300 focus:border-green-600 rounded-lg py-3 px-4 text-lg outline-none transition mb-3"
-            onkeypress="if(event.key==='Enter') verifyBirthday();"
-        >
+        <!-- 步驟 2：選社區域 (驗證成功後顯示) -->
+        <section id="stepClubSelection" class="bg-white rounded-xl shadow-md p-6 hidden">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                    <span class="bg-emerald-800 text-white rounded-full w-7 h-7 inline-flex items-center justify-center text-sm mr-2">2</span>
+                    志願選填與排序
+                </h2>
+                <span id="currentStudentBadge" class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-bold"></span>
+            </div>
 
-        <!-- 錯誤提示訊息 -->
-        <p id="birthdayError" class="text-red-500 text-sm font-semibold mb-4 hidden">
-            ⚠️ 密碼不正確，請重新輸入！
-        </p>
+            <!-- 校隊訊息提示 -->
+            <div id="fixedClubNotice" class="hidden bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg mb-6">
+                📌 您為校隊/指定社團成員：<strong id="fixedClubName" class="text-lg"></strong>，無需選填其他志願。
+            </div>
 
-        <!-- 按鈕組 -->
-        <div class="flex gap-3">
-            <button onclick="closeBirthdayModal()" class="w-1/2 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition">
-                取消
+            <!-- 一般選社區域 -->
+            <div id="normalClubArea">
+                <p class="text-sm text-gray-600 mb-4">請依照心目中的喜好安排志願順序（第 1 志願為最優先）：</p>
+                <div id="clubList" class="space-y-3 mb-6">
+                    <!-- 社團動態產生區域 -->
+                </div>
+            </div>
+
+            <button onclick="submitPreferences()" class="w-full py-4 bg-emerald-800 hover:bg-emerald-900 text-white text-lg font-bold rounded-lg shadow-lg transition">
+                確認送出志願
             </button>
-            <button onclick="verifyBirthday()" class="w-1/2 py-3 bg-emerald-800 text-white rounded-lg font-bold hover:bg-emerald-900 transition">
-                確認驗證
-            </button>
+        </section>
+
+    </main>
+
+    <!-- 密碼驗證彈窗 Modal -->
+    <div id="birthdayModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md text-center">
+            <div class="text-4xl mb-2">🔒</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-1">身分驗證</h2>
+            <p id="studentInfoDisplay" class="text-emerald-800 font-bold mb-4"></p>
+
+            <p class="text-sm text-gray-500 mb-4">請輸入學生密碼進行驗證：</p>
+
+            <input 
+                type="password" 
+                id="inputBirthday" 
+                placeholder="請輸入密碼" 
+                class="w-full text-center border-2 border-gray-300 focus:border-emerald-600 rounded-lg py-3 px-4 text-lg outline-none transition mb-3"
+                onkeypress="if(event.key==='Enter') verifyBirthday();"
+            >
+
+            <p id="birthdayError" class="text-red-500 text-sm font-semibold mb-4 hidden">
+                ⚠️ 密碼不正確，請重新輸入！
+            </p>
+
+            <div class="flex gap-3">
+                <button onclick="closeBirthdayModal()" class="w-1/2 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition">
+                    取消
+                </button>
+                <button onclick="verifyBirthday()" class="w-1/2 py-3 bg-emerald-800 text-white rounded-lg font-bold hover:bg-emerald-900 transition">
+                    確認驗證
+                </button>
+            </div>
         </div>
     </div>
 
+    <!-- JavaScript 邏輯控制 -->
     <script>
-        // 全域變數定義
+        // ⚠️ 請替換為您的 Google Apps Script 部署 URL
+        const GAS_WEB_APP_URL = "YOUR_GAS_WEB_APP_URL_HERE"; 
+
+        let globalData = { students: [], clubs: [], existingRecords: {} };
         let pendingStudent = null;
+        let currentVerifiedStudent = null;
         let verifiedBirthday = "";
 
-        // 模擬後端載入該學生資料 (實際執行時會由 doGet 填入)
-        // pendingStudent = { className: "101", seatNumber: "02", name: "黃子杰", birthday: "20190904" };
+        // 頁面初始化：載入資料
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+        });
 
-        // 關鍵：純密碼驗證邏輯
-        function verifyBirthday() {
-            const inputInput = document.getElementById('inputBirthday');
-            const errorEl = document.getElementById('birthdayError');
+        function fetchData() {
+            fetch(GAS_WEB_APP_URL)
+                .then(res => res.json())
+                .then(data => {
+                    globalData = data;
+                    initSystemInfo(data.startTime, data.endTime);
+                    initClassDropdown();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("資料載入失敗，請確認 Apps Script 部署 URL 是否正確。");
+                });
+        }
 
-            // 1. 取出輸入框文字並去除前後空白
-            const inputPwd = String(inputInput ? inputInput.value : "").trim();
+        function initSystemInfo(start, end) {
+            const el = document.getElementById('systemTimeInfo');
+            if (start && end) {
+                el.innerText = `開放時間：${start} ~ ${end}`;
+            } else {
+                el.innerText = "系統開放中";
+            }
+        }
 
-            if (!pendingStudent) {
-                alert("尚未選擇學生或學生資料載入中！");
+        function initClassDropdown() {
+            const classSelect = document.getElementById('selectClass');
+            classSelect.innerHTML = '<option value="">-- 請選擇班級 --</option>';
+            
+            const classes = [...new Set(globalData.students.map(s => s.className))].sort();
+            classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.innerText = `${c} 班`;
+                classSelect.appendChild(opt);
+            });
+        }
+
+        function onClassChange() {
+            const selectedClass = document.getElementById('selectClass').value;
+            const studentSelect = document.getElementById('selectStudent');
+            studentSelect.innerHTML = '<option value="">-- 請選擇學生 --</option>';
+
+            if (!selectedClass) {
+                studentSelect.disabled = true;
+                studentSelect.classList.add('bg-gray-50');
                 return;
             }
 
-            // 2. 取出試算表設定的密碼並去除前後空白
+            const studentsInClass = globalData.students.filter(s => s.className === selectedClass);
+            studentsInClass.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.seatNumber;
+                opt.innerText = `${s.seatNumber} 號 ${s.name}`;
+                studentSelect.appendChild(opt);
+            });
+
+            studentSelect.disabled = false;
+            studentSelect.classList.remove('bg-gray-50');
+        }
+
+        function onStudentChange() {
+            const selectedClass = document.getElementById('selectClass').value;
+            const selectedSeat = document.getElementById('selectStudent').value;
+
+            if (!selectedClass || !selectedSeat) return;
+
+            pendingStudent = globalData.students.find(s => s.className === selectedClass && s.seatNumber === selectedSeat);
+
+            if (pendingStudent) {
+                document.getElementById('studentInfoDisplay').innerText = `${pendingStudent.className}班 ${pendingStudent.seatNumber}號 ${pendingStudent.name}`;
+                document.getElementById('inputBirthday').value = "";
+                document.getElementById('birthdayError').classList.add('hidden');
+                document.getElementById('birthdayModal').classList.remove('hidden');
+            }
+        }
+
+        // 純字串密碼驗證
+        function verifyBirthday() {
+            const inputPwd = String(document.getElementById('inputBirthday').value || "").trim();
             const targetPwd = String(pendingStudent.birthday || "").trim();
 
-            // 3. 純字串比對 (只要輸入字串跟試算表一模一樣就放行)
             if (inputPwd !== "" && inputPwd === targetPwd) {
                 verifiedBirthday = inputPwd;
-                const selectedStudent = pendingStudent;
-
-                if (errorEl) errorEl.classList.add('hidden');
+                currentVerifiedStudent = pendingStudent;
+                
                 closeBirthdayModal();
-                proceedToStudentClub(selectedStudent);
+                renderClubSelection();
             } else {
-                // 比對失敗，顯示提示字樣
-                if (errorEl) errorEl.classList.remove('hidden');
+                document.getElementById('birthdayError').classList.remove('hidden');
             }
         }
 
         function closeBirthdayModal() {
+            document.getElementById('birthdayModal').classList.add('hidden');
             document.getElementById('inputBirthday').value = "";
-            document.getElementById('birthdayError').classList.add('hidden');
         }
 
-        function proceedToStudentClub(student) {
-            alert("驗證成功！進入社團選填頁面。");
-            // 這裡銜接進入選社主畫面的 function
+        function renderClubSelection() {
+            const section = document.getElementById('stepClubSelection');
+            section.classList.remove('hidden');
+
+            document.getElementById('currentStudentBadge').innerText = `${currentVerifiedStudent.className}班 ${currentVerifiedStudent.name}`;
+
+            const fixedNotice = document.getElementById('fixedClubNotice');
+            const normalArea = document.getElementById('normalClubArea');
+
+            // 如果是指定校隊
+            if (currentVerifiedStudent.fixedClub) {
+                fixedNotice.classList.remove('hidden');
+                document.getElementById('fixedClubName').innerText = currentVerifiedStudent.fixedClub;
+                normalArea.classList.add('hidden');
+            } else {
+                fixedNotice.classList.add('hidden');
+                normalArea.classList.remove('hidden');
+                renderClubList();
+            }
+            
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderClubList() {
+            const listEl = document.getElementById('clubList');
+            listEl.innerHTML = "";
+
+            // 篩選符合學生年級的社團
+            const availableClubs = globalData.clubs.filter(c => {
+                if (!c.target) return true;
+                return c.target.includes(currentVerifiedStudent.level) || c.target.includes("全");
+            });
+
+            availableClubs.forEach((club, index) => {
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between bg-gray-50 border p-4 rounded-lg shadow-sm";
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-gray-400">志願 ${index + 1}</span>
+                        <div>
+                            <h4 class="font-bold text-gray-800">${club.name}</h4>
+                            <p class="text-xs text-gray-500">${club.desc || ''}</p>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function submitPreferences() {
+            if (!currentVerifiedStudent) return;
+
+            const payload = {
+                className: currentVerifiedStudent.className,
+                seatNumber: currentVerifiedStudent.seatNumber,
+                studentName: currentVerifiedStudent.name,
+                level: currentVerifiedStudent.level,
+                birthday: verifiedBirthday,
+                fixedClub: currentVerifiedStudent.fixedClub || "",
+                preferences: [] // 可依照畫面選取的社團填入志願陣列
+            };
+
+            fetch(GAS_WEB_APP_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === "success") {
+                    alert("🎉 志願提交成功！");
+                    location.reload();
+                } else {
+                    alert("提交失敗：" + res.message);
+                }
+            })
+            .catch(err => {
+                alert("網路提交失敗，請重試！");
+            });
         }
     </script>
 </body>
