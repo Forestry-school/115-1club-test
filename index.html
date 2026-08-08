@@ -71,7 +71,6 @@
         .student-card:hover { border-color: var(--primary); background: #FFF; }
         .student-card:active { transform: scale(0.97); }
 
-        /* 社團卡片包覆區：採用縱向疊加設計，確保名稱與老師完整呈現 */
         .club-row {
             background: #FFF; border: 1.5px solid #E2E8DC; border-left: 5px solid #D1DBC8;
             border-radius: 12px; padding: 10px 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px;
@@ -80,7 +79,6 @@
         .club-row.rank-2 { border-left-color: #4B6339; }
         .club-row.rank-3 { border-left-color: #5B82A6; }
 
-        /* 下拉選單與按鈕適度縮放 */
         .rank-select {
             background: #FFF; border: 1.5px solid var(--accent); color: #A8631C;
             font-weight: 800; font-size: 12px; border-radius: 8px; padding: 4px 2px;
@@ -197,6 +195,31 @@
         <footer class="text-center text-slate-400 text-xs mt-6 font-medium">製作人：TATA</footer>
     </div>
 
+    <!-- 密碼驗證彈出視窗 -->
+    <div id="pwdModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+            <h3 class="text-lg font-bold mb-1 text-slate-800 text-center">🔒 身份密碼驗證</h3>
+            <p id="pwdModalStudentTitle" class="text-sm font-semibold text-emerald-700 text-center mb-4"></p>
+            
+            <div class="mb-4">
+                <label for="pwdInput" class="block text-xs font-bold text-slate-600 mb-1">請輸入個人密碼：</label>
+                <input type="password" id="pwdInput" placeholder="請輸入密碼" 
+                       class="w-full px-3 py-2 border-2 border-slate-300 rounded-xl focus:outline-none focus:border-emerald-600 font-mono text-center text-lg tracking-widest"
+                       onkeydown="if(event.key==='Enter') verifyPassword()">
+                <p id="pwdErrorMsg" class="text-xs text-red-500 font-bold mt-1 text-center hidden">❌ 密碼不正確，請重新輸入！</p>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="closePwdModal()" class="w-1/2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition text-sm">
+                    取消
+                </button>
+                <button onclick="verifyPassword()" class="w-1/2 bg-emerald-700 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-800 transition text-sm">
+                    確認登入
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 簡介彈出視窗 -->
     <div id="descModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
@@ -209,29 +232,6 @@
         </div>
     </div>
 
-    <!-- 🔒 身分驗證 (生日密碼) 彈出視窗 -->
-    <div id="birthdayModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
-            <h3 class="text-lg font-bold text-slate-800 mb-2">🔒 身分驗證</h3>
-            <p id="birthdayTargetName" class="text-sm font-bold text-emerald-800 mb-4"></p>
-            <p class="text-xs text-slate-500 mb-3">請輸入預設密碼 (西元生日 8 碼，例如：20120520)</p>
-            
-            <input type="password" id="inputBirthday" placeholder="請輸入 8 位數密碼" 
-                   class="w-full border-2 border-slate-300 focus:border-emerald-600 rounded-xl px-3 py-2 text-center text-lg font-bold outline-none mb-3">
-            
-            <div id="birthdayError" class="text-xs font-bold text-red-500 mb-3 hidden">⚠️ 密碼不正確，請重新輸入</div>
-            
-            <div class="flex gap-2">
-                <button onclick="closeBirthdayModal()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl transition text-sm">
-                    取消
-                </button>
-                <button onclick="verifyBirthday()" class="flex-1 bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2 rounded-xl transition text-sm">
-                    確認進入
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwysSOartamBcSLu63YM0ZDVBHF9SU4ZhjA3yCYXK302LTvAtgRLqh4xEiP0yhHcxZxHg/exec";
 
@@ -239,10 +239,9 @@
         let allClubs = [];
         let existingRecords = {};
         let currentStudent = null;
+        let pendingStudent = null;
+        let currentStudentPassword = "";
         let currentFilteredClubs = [];
-
-        let pendingStudent = null;     // 點擊學生後暫存
-        let verifiedBirthday = "";      // 驗證通過後的密碼/生日
 
         let startTime = null;
         let endTime = null;
@@ -398,7 +397,7 @@
             students.forEach(s => {
                 const card = document.createElement('div');
                 card.className = "student-card";
-                card.onclick = () => openBirthdayModal(s);
+                card.onclick = () => openPwdModal(s);
                 
                 const fixedBadge = s.fixedClub ? `<span class="inline-block bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded mt-1">校隊成員</span>` : '';
                 card.innerHTML = `
@@ -410,36 +409,39 @@
             });
         }
 
-        // 🔒 開啟密碼驗證視窗
-        function openBirthdayModal(student) {
+        /* 密碼驗證邏輯 */
+        function openPwdModal(student) {
             pendingStudent = student;
-            document.getElementById('birthdayTargetName').innerText = `${student.className}班 ${student.seatNumber}號 ${student.name}`;
-            document.getElementById('inputBirthday').value = '';
-            document.getElementById('birthdayError').classList.add('hidden');
-            document.getElementById('birthdayModal').classList.remove('hidden');
+            document.getElementById('pwdModalStudentTitle').innerText = `${student.className}班 ${student.seatNumber}號 ${student.name}`;
+            document.getElementById('pwdInput').value = '';
+            document.getElementById('pwdErrorMsg').classList.add('hidden');
+            document.getElementById('pwdModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('pwdInput').focus(), 100);
         }
 
-        function closeBirthdayModal() {
-            document.getElementById('birthdayModal').classList.add('hidden');
+        function closePwdModal() {
+            document.getElementById('pwdModal').classList.add('hidden');
             pendingStudent = null;
         }
 
-        // 🔒 驗證密碼（轉成純字串去空白）
-        function verifyBirthday() {
-            const inputPwd = String(document.getElementById('inputBirthday').value || "").trim();
-            const targetPwd = String(pendingStudent.birthday || "").trim();
+        function verifyPassword() {
+            const pwdInput = document.getElementById('pwdInput').value.trim();
+            if (!pendingStudent) return;
 
-            if (inputPwd !== "" && inputPwd === targetPwd) {
-                verifiedBirthday = inputPwd;
-                const selectedStudent = pendingStudent;
-                closeBirthdayModal();
-                proceedToStudentClub(selectedStudent);
+            const targetPwd = String(pendingStudent.password || "").trim();
+
+            if (pwdInput === targetPwd) {
+                currentStudentPassword = pwdInput;
+                const studentToSelect = pendingStudent;
+                closePwdModal();
+                selectStudent(studentToSelect);
             } else {
-                document.getElementById('birthdayError').classList.remove('hidden');
+                document.getElementById('pwdErrorMsg').classList.remove('hidden');
+                document.getElementById('pwdInput').focus();
             }
         }
 
-        function proceedToStudentClub(student) {
+        function selectStudent(student) {
             currentStudent = student;
             document.getElementById('stepStudent').classList.add('hidden');
             document.getElementById('stepClub').classList.remove('hidden');
@@ -552,7 +554,7 @@
             document.getElementById('stepClass').classList.remove('hidden');
             setTrail(1);
             currentStudent = null;
-            verifiedBirthday = "";
+            currentStudentPassword = "";
         }
 
         async function submitData() {
@@ -570,7 +572,7 @@
                 seatNumber: currentStudent.seatNumber,
                 studentName: currentStudent.name,
                 level: currentStudent.level,
-                birthday: verifiedBirthday, // 帶入驗證過的生日/密碼
+                password: currentStudentPassword,
                 fixedClub: isFixed ? currentStudent.fixedClub : "",
                 preferences: isFixed ? [] : currentFilteredClubs.map(c => ({
                     clubName: c.name,
@@ -579,14 +581,18 @@
             };
 
             try {
-                await fetch(GAS_URL, {
+                const res = await fetch(GAS_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
 
-                alert(isFixed ? '校隊名額已成功確認並寫入資料庫！' : '志願提交/更新成功！已寫入資料庫。');
+                const result = await res.json();
+                if (result.status === "success") {
+                    alert(isFixed ? '校隊名額已成功確認並寫入資料庫！' : '志願提交/更新成功！已寫入資料庫。');
+                } else {
+                    alert('提交失敗：' + (result.message || '驗證失敗'));
+                }
 
             } catch (e) {
                 alert('提交失敗：' + e);
