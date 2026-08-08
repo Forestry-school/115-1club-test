@@ -436,12 +436,12 @@
                 expectedPwd = expectedPwd.padStart(4, '0');
             }
 
-            // 在 Console 顯示密碼比對過程，方便按 F12 檢查
             console.log(`[驗證資訊] 學生: ${pendingStudent.name} | 網頁輸入: '${inputVal}' | 系統預期: '${expectedPwd}'`);
 
             if (inputVal === expectedPwd) {
-                closePasswordModal();
+                // ✅ 修正點：先將資料傳進下一頁，再關閉視窗，確保資料不會變為空值
                 enterClubSelection(pendingStudent);
+                closePasswordModal();
             } else {
                 errEl.classList.remove('invisible');
                 
